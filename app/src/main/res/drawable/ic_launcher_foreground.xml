@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Pulse / heartbeat trail -->
+    <path
+        android:strokeWidth="5"
+        android:strokeColor="#7FE9FF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M14,54 H24 L29,40 L35,70 L41,54 H46" />
+
+    <!-- Paper plane (send) -->
+    <path
+        android:pathData="M46,79 L86,54 L46,30 L46,49 L70,54 L46,59 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="46" android:startY="30"
+                android:endX="86" android:endY="79">
+                <item android:offset="0.0" android:color="#FF22D3EE" />
+                <item android:offset="1.0" android:color="#FF6366F1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
