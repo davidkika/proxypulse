@@ -27,7 +27,9 @@ class ProxySource(
         /** Public MTProto sources. mtpro.xyz includes per-proxy country codes. */
         val SOURCES = listOf(
             "https://mtpro.xyz/api/?type=mtproto",
-            "https://raw.githubusercontent.com/MrMarble/mtproto/master/proxies.json"
+            "https://raw.githubusercontent.com/MrMarble/mtproto/master/proxies.json",
+            "https://www.google.com/amp/s/telproxy.com/amp/",
+            "https://mtproto.cloud/"
         )
 
         private fun defaultClient() = OkHttpClient.Builder()
