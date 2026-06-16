@@ -9,22 +9,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/**
- * Fetches raw MTProto proxy lists from public sources and normalises them
- * into [Proxy] objects (before any region filter or liveness check).
- *
- * Sources are intentionally easy to edit — add/remove URLs in [SOURCES].
- * The parser understands three shapes:
- *   1. JSON arrays of objects (mtpro.xyz style: host/port/secret/country)
- *   2. tg:// and https://t.me/proxy deep links
- *   3. plain "host:port:secret" lines
- */
 class ProxySource(
     private val client: OkHttpClient = defaultClient()
 ) {
 
     companion object {
-        /** Public MTProto sources. mtpro.xyz includes per-proxy country codes. */
         val SOURCES = listOf(
             "https://raw.githubusercontent.com/SoliSpirit/mtproto/master/all_proxies.txt",
             "https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/proxy_all.txt",
@@ -37,18 +26,35 @@ class ProxySource(
         )
 
         private fun defaultClient() = OkHttpClient.Builder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
     }
 
-    /** Fetch every source, merge, and de-duplicate by id. Network errors per
-     *  source are swallowed so one dead URL never breaks the whole refresh. */
     suspend fun fetchAll(): List<Proxy> = withContext(Dispatchers.IO) {
         SOURCES
-            .flatMap { url -> runCatching { fetch(url) }.getOrDefault(emptyList()) }
+            .flatMap { url -> runCatching { fetchWithMirrors(url) }.getOrDefault(emptyList()) }
             .distinctBy { it.id }
+    }
+
+    // Try the direct GitHub URL first; if it fails or is empty, try the jsDelivr mirror.
+    private fun fetchWithMirrors(url: String): List<Proxy> {
+        for (candidate in mirrorsFor(url)) {
+            val r = runCatching { fetch(candidate) }.getOrDefault(emptyList())
+            if (r.isNotEmpty()) return r
+        }
+        return emptyList()
+    }
+
+    private fun mirrorsFor(url: String): List<String> {
+        val prefix = "https://raw.githubusercontent.com/"
+        if (!url.startsWith(prefix)) return listOf(url)
+        val parts = url.removePrefix(prefix).split("/", limit = 4)
+        if (parts.size < 4) return listOf(url)
+        val (user, repo, branch, path) = parts
+        val jsdelivr = "https://cdn.jsdelivr.net/gh/$user/$repo@$branch/$path"
+        return listOf(url, jsdelivr)
     }
 
     private fun fetch(url: String): List<Proxy> {
@@ -70,7 +76,6 @@ class ProxySource(
     }
 
     private fun parseJsonObject(obj: JSONObject): List<Proxy> {
-        // Some feeds wrap the array under a key like "proxies".
         for (key in listOf("proxies", "data", "result", "list")) {
             if (obj.has(key)) {
                 val v = obj.get(key)
