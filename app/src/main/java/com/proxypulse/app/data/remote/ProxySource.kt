@@ -26,10 +26,16 @@ class ProxySource(
     companion object {
         /** Public MTProto sources. mtpro.xyz includes per-proxy country codes. */
         val SOURCES = listOf(
-            "https://mtpro.xyz/api/?type=mtproto",
-            "https://raw.githubusercontent.com/MrMarble/mtproto/master/proxies.json",
-            "https://www.google.com/amp/s/telproxy.com/amp/",
-            "https://mtproto.cloud/"
+            "https://raw.githubusercontent.com/SoliSpirit/mtproto/master/all_proxies.txt",
+            "https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/proxy_all.txt",
+            "https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/proxy_ru.txt",
+            "https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/proxy_eu.txt",
+            "https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/verified/proxy_all_verified.json",
+            "https://raw.githubusercontent.com/shablin/mtproto-proxy/main/data/valid_proxy.json",
+            "https://raw.githubusercontent.com/shablin/mtproto-proxy/main/data/valid_proxy.txt",
+            "https://raw.githubusercontent.com/ALIILAPRO/MTProtoProxy/main/mtproto.txt",
+            "https://raw.githubusercontent.com/Argh94/Proxy-List/main/mtproto.txt",
+            "https://raw.githubusercontent.com/Grim1313/mtproto-for-telegram/main/all_proxies.txt"
         )
 
         private fun defaultClient() = OkHttpClient.Builder()
