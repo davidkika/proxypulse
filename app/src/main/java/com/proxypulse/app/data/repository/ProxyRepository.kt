@@ -16,7 +16,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.io.File
 
-/** Snapshot of the last/ongoing refresh, surfaced to the UI. */
 data class RefreshStatus(
     val isRefreshing: Boolean = false,
     val lastUpdated: Long = 0L,
@@ -26,15 +25,92 @@ data class RefreshStatus(
     val error: String? = null
 )
 
-/**
- * Single source of truth for the proxy list.
- *
- * A full [refresh] = download -> keep only Europe/America -> liveness-check ->
- * keep survivors only -> persist. Because only live proxies are ever stored,
- * dead ones disappear on every refresh (manual or the hourly worker).
- */
 class ProxyRepository(
     context: Context,
+    private val source: ProxySource = ProxySource(),
+    private val checker: ProxyChecker = ProxyChecker()
+) {
+    private val appContext = context.applicationContext
+    private val file = File(appContext.filesDir, "proxies.json")
+    private val json = Json { ignoreUnknownKeys = true }
+    private val refreshMutex = Mutex()
+
+    private val _proxies = MutableStateFlow(loadFromDisk())
+    val proxies: StateFlow<List<Proxy>> = _proxies.asStateFlow()
+
+    private val _status = MutableStateFlow(
+        RefreshStatus(lastUpdated = loadTimestamp(), alive = _proxies.value.size)
+    )
+    val status: StateFlow<RefreshStatus> = _status.asStateFlow()
+
+    fun isStale(): Boolean {
+        val ts = _status.value.lastUpdated
+        return _proxies.value.isEmpty() || (System.currentTimeMillis() - ts) > MAX_AGE_MS
+    }
+
+    suspend fun refresh() {
+        if (!refreshMutex.tryLock()) return
+        try {
+            _status.update { it.copy(isRefreshing = true, error = null) }
+
+            val fetched = source.fetchAll()
+            val regional = fetched.filter { Regions.isAllowed(it.country) }
+            val checked = checker.checkAll(regional).sortedBy { it.pingMs }
+
+            // Fallback: if the liveness probe killed everything (DPI/VPN often
+            // blocks our raw TCP test even when the proxy itself works in
+            // Telegram), show the fetched list unchecked instead of nothing.
+            val result = if (checked.isEmpty() && regional.isNotEmpty()) regional else checked
+
+            // Diagnostic note so the cause is visible in the UI.
+            val note = when {
+                fetched.isEmpty() ->
+                    "Источники недоступны — похоже, заблокирован GitHub или нет сети (попробуйте без VPN)"
+                checked.isEmpty() ->
+                    "Скачано ${regional.size}, но проверка живости не прошла — показаны без проверки (часто из-за VPN/DPI)"
+                else -> null
+            }
+
+            _proxies.value = result
+            saveToDisk(result)
+
+            _status.update {
+                it.copy(
+                    isRefreshing = false,
+                    lastUpdated = System.currentTimeMillis(),
+                    fetched = fetched.size,
+                    regional = regional.size,
+                    alive = result.size,
+                    error = note
+                )
+            }
+        } catch (e: Exception) {
+            _status.update { it.copy(isRefreshing = false, error = e.message ?: "Ошибка обновления") }
+        } finally {
+            refreshMutex.unlock()
+        }
+    }
+
+    private fun loadFromDisk(): List<Proxy> = runCatching {
+        if (!file.exists()) emptyList()
+        else json.decodeFromString<Stored>(file.readText()).proxies
+    }.getOrDefault(emptyList())
+
+    private fun loadTimestamp(): Long = runCatching {
+        if (!file.exists()) 0L else json.decodeFromString<Stored>(file.readText()).updatedAt
+    }.getOrDefault(0L)
+
+    private fun saveToDisk(list: List<Proxy>) = runCatching {
+        file.writeText(json.encodeToString(Stored(System.currentTimeMillis(), list)))
+    }
+
+    @kotlinx.serialization.Serializable
+    private data class Stored(val updatedAt: Long, val proxies: List<Proxy>)
+
+    companion object {
+        const val MAX_AGE_MS = 60 * 60 * 1000L
+    }
+}    context: Context,
     private val source: ProxySource = ProxySource(),
     private val checker: ProxyChecker = ProxyChecker()
 ) {
