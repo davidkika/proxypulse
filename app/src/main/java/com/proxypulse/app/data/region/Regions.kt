@@ -29,8 +29,7 @@ object Regions {
     val ALLOWED: Set<String> = EUROPE + AMERICA
 
     fun isAllowed(code: String): Boolean =
-        code.uppercase() in ALLOWED
-
+        code.isBlank() || code.uppercase() in ALLOWED
     fun regionOf(code: String): Region = when (code.uppercase()) {
         in EUROPE -> Region.EUROPE
         in AMERICA -> Region.AMERICA
