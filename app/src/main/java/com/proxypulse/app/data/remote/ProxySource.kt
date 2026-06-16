@@ -33,9 +33,7 @@ class ProxySource(
             "https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/verified/proxy_all_verified.json",
             "https://raw.githubusercontent.com/shablin/mtproto-proxy/main/data/valid_proxy.json",
             "https://raw.githubusercontent.com/shablin/mtproto-proxy/main/data/valid_proxy.txt",
-            "https://raw.githubusercontent.com/ALIILAPRO/MTProtoProxy/main/mtproto.txt",
-            "https://raw.githubusercontent.com/Argh94/Proxy-List/main/mtproto.txt",
-            "https://raw.githubusercontent.com/Grim1313/mtproto-for-telegram/main/all_proxies.txt"
+            "https://raw.githubusercontent.com/ALIILAPRO/MTProtoProxy/main/mtproto.txt"
         )
 
         private fun defaultClient() = OkHttpClient.Builder()
